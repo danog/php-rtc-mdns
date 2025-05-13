@@ -21,7 +21,7 @@ class MdnsServerMock
     public function start(): void
     {
         $factory = new Factory();
-        $this->server = await($factory->createServer('udp://0.0.0.0:5353'));
+        $this->server = await($factory->createServer('224.0.0.251:5353'));
         $parser = new Parser();
         $dumper = new BinaryDumper();
 

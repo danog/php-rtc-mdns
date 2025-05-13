@@ -95,7 +95,7 @@ class MulticastExecutor implements ExecutorInterface
      */
     public function doQuery($queryData, $name): PromiseInterface
     {
-        $this->conn = await($this->factory->createServer('udp://0.0.0.0:0'));
+        $this->conn = await($this->factory->createClient('127.0.0.1:0'));
 
         $timer = $this->loop->addTimer($this->timeout, function () use ($name) {
             $this->conn->close();
