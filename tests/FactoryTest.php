@@ -21,6 +21,10 @@ class FactoryTest extends TestCase
     }
     public function testSuccessfulMulticastDns()
     {
+        if (getenv('CI') === 'true') {
+            $this->markTestSkipped('Multicast networking not available on GitHub Actions.');
+        }
+
         $mdnsMock = new MdnsServerMock(['test.local' => '192.168.1.20']);
         $mdnsMock->start();
 
@@ -34,6 +38,10 @@ class FactoryTest extends TestCase
     }
     public function testFailedMulticastDns()
     {
+        if (getenv('CI') === 'true') {
+            $this->markTestSkipped('Multicast networking not available on GitHub Actions.');
+        }
+
         $mdnsMock = new MdnsServerMock(['test.local' => '192.168.1.20']);
         $mdnsMock->start();
 
