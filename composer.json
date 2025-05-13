@@ -1,0 +1,47 @@
+{
+  "name": "quasarstream/mdns",
+  "type": "library",
+  "description": "This library provides a Multicast DNS (mDNS) resolver.",
+  "keywords": [
+    "multicastdns",
+    "mdns"
+  ],
+  "homepage": "https://www.quasarstream.com/webrtc",
+  "license": "BSD-3-Clause",
+  "authors": [
+    {
+      "name": "Amin Yazdanpanah",
+      "email": "github@aminyazdanpanah.com"
+    },
+    {
+      "name": "Sana Moniri",
+      "email": "s.mo@quasarstream.com"
+    },
+    {
+      "name": "Quasar Stream Community",
+      "homepage": "https://quasarstream.com/teams"
+    }
+  ],
+  "require": {
+    "php": "^8.4",
+    "ext-ffi": "*",
+    "react/dns": "^1.13",
+    "react/datagram": "^1.10",
+    "react/async": "^4.3"
+  },
+  "require-dev": {
+    "phpunit/php-code-coverage": "11.0.x-dev",
+    "phpunit/phpunit": "^11.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "Webrtc\\MDNS\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\Webrtc\\MDNS\\": "tests"
+    }
+  },
+  "minimum-stability": "dev"
+}
