@@ -21,8 +21,8 @@ class FactoryTest extends TestCase
     }
     public function testSuccessfulMulticastDns()
     {
-        if (getenv('CI') === 'true') {
-            $this->markTestSkipped('Multicast networking not available on GitHub Actions.');
+        if (!Multicast::isAvailable()) {
+            $this->markTestSkipped(Multicast::skipReason());
         }
 
         $mdnsMock = new MdnsServerMock(['test.local' => '192.168.1.20']);
@@ -38,8 +38,8 @@ class FactoryTest extends TestCase
     }
     public function testFailedMulticastDns()
     {
-        if (getenv('CI') === 'true') {
-            $this->markTestSkipped('Multicast networking not available on GitHub Actions.');
+        if (!Multicast::isAvailable()) {
+            $this->markTestSkipped(Multicast::skipReason());
         }
 
         $mdnsMock = new MdnsServerMock(['test.local' => '192.168.1.20']);
