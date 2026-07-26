@@ -1,7 +1,7 @@
 {
-    "name": "quasarstream/mdns",
+    "name": "danog/php-rtc-mdns",
     "type": "library",
-    "description": "This library provides a Multicast DNS (mDNS) resolver.",
+    "description": "This library provides a Multicast DNS (mDNS) resolver. Fork with FFI made optional and a pure-PHP DTLS/SRTP stack, maintained for MadelineProto.",
     "keywords": [
         "multicastdns",
         "mdns"
@@ -42,5 +42,8 @@
             "Tests\\Webrtc\\MDNS\\": "tests"
         }
     },
-    "minimum-stability": "dev"
+    "minimum-stability": "dev",
+    "replace": {
+        "quasarstream/mdns": "self.version"
+    }
 }
