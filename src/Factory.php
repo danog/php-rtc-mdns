@@ -27,7 +27,7 @@ class Factory
     /**
      * Default mDNS address used for multicast DNS queries (RFC 6762).
      */
-    const string DNS = '224.0.0.251:5353';
+    const DNS = '224.0.0.251:5353';
 
     /**
      * The event loop instance used to drive asynchronous operations.
