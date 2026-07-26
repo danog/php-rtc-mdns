@@ -4,82 +4,63 @@ namespace Tests\Webrtc\MDNS;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
-use React\Dns\RecordNotFoundException;
-use Webrtc\MDNS\Factory;
 use PHPUnit\Framework\TestCase;
+use Webrtc\Exception\RuntimeException;
+use Webrtc\MDNS\Factory;
 use Webrtc\MDNS\MulticastExecutor;
-use function React\Async\async;
-use function React\Async\await;
-use function React\Async\delay;
 
 #[UsesClass(MulticastExecutor::class)]
 #[CoversClass(Factory::class)]
 class FactoryTest extends TestCase
 {
-    public function testCreate(){
-        $this->assertTrue(true);
+    public function testCreateResolver(): void
+    {
+        $this->assertInstanceOf(MulticastExecutor::class, (new Factory())->createResolver());
     }
-    public function testSuccessfulMulticastDns()
+
+    public function testUsesAGivenExecutor(): void
+    {
+        $executor = new MulticastExecutor();
+
+        $this->assertSame($executor, (new Factory($executor))->createResolver());
+    }
+
+    public function testSuccessfulMulticastDns(): void
     {
         if (!Multicast::isAvailable()) {
             $this->markTestSkipped(Multicast::skipReason());
         }
 
-        $mdnsMock = new MdnsServerMock(['test.local' => '192.168.1.20']);
-        $mdnsMock->start();
+        $responder = new MdnsServerMock(['test.local' => '192.168.1.20']);
+        $responder->start();
 
-        $factory = new Factory();
-        $resolver = $factory->createResolver();
-        $ip = await($resolver->resolve('test.local'));
+        try {
+            $resolver = (new Factory())->createResolver();
 
-        $this->assertSame('192.168.1.20', $ip);
-
-        $mdnsMock->stop();
+            $this->assertSame('192.168.1.20', $resolver->resolve('test.local'));
+        } finally {
+            $responder->stop();
+        }
     }
-    public function testFailedMulticastDns()
+
+    public function testFailedMulticastDns(): void
     {
         if (!Multicast::isAvailable()) {
             $this->markTestSkipped(Multicast::skipReason());
         }
 
-        $mdnsMock = new MdnsServerMock(['test.local' => '192.168.1.20']);
-        $mdnsMock->start();
+        $responder = new MdnsServerMock(['test.local' => '192.168.1.20']);
+        $responder->start();
 
-        async(function () use ($mdnsMock){
-            delay(.2);
-            $mdnsMock->stop();
-        })();
+        try {
+            $resolver = (new Factory(new MulticastExecutor(Factory::DNS, 0.5)))->createResolver();
 
-        $factory = new Factory();
-        $resolver = $factory->createResolver();
-        $this->expectException(RecordNotFoundException::class);
-        $this->expectExceptionMessage('DNS query for wrong.local (A) returned an error response (Non-Existent Domain / NXDOMAIN)');
-        await($resolver->resolve('wrong.local'));
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('DNS query for wrong.local timed out');
+
+            $resolver->resolve('wrong.local');
+        } finally {
+            $responder->stop();
+        }
     }
-//
-//    public function testCreateResolver()
-//    {
-//        $loop = $this->getMockBuilder('React\EventLoop\LoopInterface')->getMock();
-//        $factory = new Factory($loop);
-//
-//        $resolver = $factory->createResolver();
-//
-//        $this->assertInstanceOf('React\Dns\Resolver\Resolver', $resolver);
-//        $loop->stop();
-//    }
-//
-//    /**
-//     * @throws \ReflectionException
-//     */
-//    public function testConstructWithoutLoopAssignsLoopAutomatically()
-//    {
-//        $factory = new Factory();
-//
-//        $ref = new ReflectionProperty($factory, 'loop');
-//        $loop = $ref->getValue($factory);
-//
-//        $this->assertInstanceOf('React\EventLoop\LoopInterface', $loop);
-//        $loop->stop();
-//
-//    }
 }

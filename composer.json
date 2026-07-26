@@ -24,9 +24,9 @@
     ],
     "require": {
         "php": "^8.2",
-        "react/dns": "^1.13",
-        "react/datagram": "^1.10",
-        "react/async": "^4.3"
+        "amphp/amp": "^3.1",
+        "amphp/socket": "^2.3",
+        "daverandom/libdns": "^2.0.2"
     },
     "require-dev": {
         "phpunit/php-code-coverage": "11.0.x-dev",

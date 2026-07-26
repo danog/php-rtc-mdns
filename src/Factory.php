@@ -11,13 +11,8 @@
 
 namespace Webrtc\MDNS;
 
-use React\Dns\Query\ExecutorInterface;
-use React\Dns\Resolver\Resolver;
-use React\EventLoop\Loop;
-use React\EventLoop\LoopInterface;
-
 /**
- * Factory for creating mDNS (Multicast DNS) resolvers using ReactPHP components.
+ * Factory for creating mDNS (Multicast DNS) resolvers.
  *
  * This class initializes a multicast DNS resolver suitable for use with
  * WebRTC local peer discovery and service resolution scenarios.
@@ -30,37 +25,27 @@ class Factory
     const DNS = '224.0.0.251:5353';
 
     /**
-     * The event loop instance used to drive asynchronous operations.
+     * The executor responsible for sending queries over multicast.
      */
-    private LoopInterface $loop;
+    private MulticastExecutor $executor;
 
     /**
-     * The DNS executor responsible for sending DNS queries over multicast.
-     */
-    private ExecutorInterface $executor;
-
-    /**
-     * Constructs the Factory with optional custom event loop and executor.
+     * Constructs the Factory with an optional custom executor.
      *
-     * If no loop is provided, the default global loop is used.
-     * If no executor is provided, a multicast executor is created using the default DNS address.
-     *
-     * @param ?LoopInterface $loop Optional ReactPHP event loop instance.
-     * @param ?ExecutorInterface $executor Optional DNS executor for query resolution.
+     * @param ?MulticastExecutor $executor Optional executor for query resolution.
      */
-    public function __construct(?LoopInterface $loop = null, ?ExecutorInterface $executor = null)
+    public function __construct(?MulticastExecutor $executor = null)
     {
-        $this->loop = $loop ?: Loop::get();
-        $this->executor = $executor ?: new MulticastExecutor(self::DNS, $loop);
+        $this->executor = $executor ?: new MulticastExecutor(self::DNS);
     }
 
     /**
-     * Creates and returns a ReactPHP DNS resolver using the configured executor.
+     * Returns a resolver capable of performing mDNS queries.
      *
-     * @return Resolver A DNS resolver capable of performing mDNS queries.
+     * @return MulticastExecutor A resolver whose resolve() blocks until an answer arrives.
      */
-    public function createResolver(): Resolver
+    public function createResolver(): MulticastExecutor
     {
-        return new Resolver($this->executor);
+        return $this->executor;
     }
 }

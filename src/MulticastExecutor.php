@@ -11,144 +11,127 @@
 
 namespace Webrtc\MDNS;
 
-use React\Datagram\Factory as DatagramFactory;
-use React\Datagram\Socket;
-use React\Dns\BadServerException;
-use React\Dns\Model\Message;
-use React\Dns\Protocol\BinaryDumper;
-use React\Dns\Protocol\Parser;
-use React\Dns\Query\ExecutorInterface;
-use React\Dns\Query\Query;
-use React\Dns\Query\TimeoutException;
-use React\EventLoop\Loop;
-use React\EventLoop\LoopInterface;
-use React\Promise\Deferred;
-use React\Promise\PromiseInterface;
-use RuntimeException;
-use function React\Async\await;
+use Amp\Socket\InternetAddress;
+use Amp\CancelledException;
+use Amp\TimeoutCancellation;
+use LibDNS\Decoder\Decoder;
+use LibDNS\Decoder\DecoderFactory;
+use LibDNS\Encoder\Encoder;
+use LibDNS\Encoder\EncoderFactory;
+use LibDNS\Messages\MessageFactory;
+use LibDNS\Messages\MessageTypes;
+use LibDNS\Records\QuestionFactory;
+use LibDNS\Records\ResourceQTypes;
+use Throwable;
+use Webrtc\Exception\RuntimeException;
+use function Amp\Socket\bindUdpSocket;
 
 /**
- * Executor for sending DNS queries using multicast over UDP.
+ * Resolves names over Multicast DNS.
  *
- * This executor is suitable for Multicast DNS (mDNS) which is commonly used
- * in local network service discovery, such as WebRTC peer resolution.
+ * WebRTC peers publish their host candidates as randomly generated `.local` names rather than
+ * bare IP addresses, so an ICE agent has to answer those names on the local network: there is
+ * no upstream server to ask.
  *
- * It implements ReactPHP's ExecutorInterface, providing asynchronous DNS query resolution
- * via multicast UDP sockets.
+ * @see https://datatracker.ietf.org/doc/html/rfc6762 Multicast DNS
  */
-class MulticastExecutor implements ExecutorInterface
+class MulticastExecutor
 {
-    /**
-     * Deferred used to resolve or reject the current DNS query.
-     */
-    private Deferred $deferred;
+    private readonly Encoder $encoder;
+    private readonly Decoder $decoder;
+    private readonly MessageFactory $messageFactory;
+    private readonly QuestionFactory $questionFactory;
 
     /**
-     * Datagram socket connection used for sending/receiving multicast messages.
-     */
-    private Socket $conn;
-
-    /**
-     * Constructs a new MulticastExecutor.
-     *
-     * @param string $nameserver Multicast DNS address (default: 224.0.0.251:5353).
-     * @param ?LoopInterface $loop Optional ReactPHP event loop.
-     * @param ?Parser $parser Optional DNS message parser.
-     * @param ?BinaryDumper $dumper Optional DNS message dumper.
-     * @param int $timeout Query timeout in seconds.
-     * @param ?DatagramFactory $factory Optional datagram factory to create sockets.
+     * @param string $nameserver Multicast DNS group and port (default: 224.0.0.251:5353).
+     * @param float $timeout How long to wait for an answer, in seconds.
      */
     public function __construct(
-        private readonly string  $nameserver = "224.0.0.251:5353",
-        private ?LoopInterface   $loop = null,
-        private ?Parser          $parser = null,
-        private ?BinaryDumper    $dumper = null,
-        private readonly int     $timeout = 5,
-        private ?DatagramFactory $factory = null
-    )
-    {
-        $this->loop = $loop ?: Loop::get();
-        $this->parser = $parser ?: new Parser();
-        $this->dumper = $dumper ?: new BinaryDumper();
-        $this->factory = $factory ?: new DatagramFactory($this->loop);
+        private readonly string $nameserver = Factory::DNS,
+        private readonly float $timeout = 5.0
+    ) {
+        $this->encoder = (new EncoderFactory())->create();
+        $this->decoder = (new DecoderFactory())->create();
+        $this->messageFactory = new MessageFactory();
+        $this->questionFactory = new QuestionFactory();
     }
 
     /**
-     * Sends a DNS query and returns a promise that resolves with the response.
+     * Ask the local network for the address behind a name.
      *
-     * @param Query $query The DNS query to perform.
-     * @return PromiseInterface Resolves with a Message object on success or rejects on failure.
+     * @param string $name The name to resolve, normally a WebRTC `.local` candidate.
+     * @return string The address from the first matching answer record.
+     * @throws RuntimeException If nobody answered in time, or the socket closed first.
      */
-    public function query(Query $query): PromiseInterface
+    public function resolve(string $name): string
     {
-        $request = Message::createRequestForQuery($query);
-        $queryData = $this->dumper->toBinary($request);
-        return $this->doQuery($queryData, $query->name);
-    }
+        $socket = bindUdpSocket('0.0.0.0:0');
 
-    /**
-     * Internal method to send the raw DNS query data and handle the response.
-     *
-     * @param string $queryData The binary representation of the DNS query.
-     * @param string $name The domain name being queried (used in error messages).
-     * @return PromiseInterface Resolves with a parsed DNS message or rejects on error/timeout.
-     */
-    public function doQuery($queryData, $name): PromiseInterface
-    {
-        $this->conn = await($this->factory->createClient('127.0.0.1:0'));
+        try {
+            $socket->send(InternetAddress::fromString($this->nameserver), $this->encodeQuery($name));
 
-        $timer = $this->loop->addTimer($this->timeout, function () use ($name) {
-            $this->conn->close();
-            $this->deferred->reject(new TimeoutException(sprintf("DNS query for %s timed out", $name)));
-        });
+            // Responders other than the one being asked for also answer on this group, so keep
+            // reading until an answer actually carries the name in question rather than taking
+            // whichever datagram arrives first.
+            $cancellation = new TimeoutCancellation($this->timeout);
 
-        $this->deferred = new Deferred(function ($_, $reject) use (&$timer, $name) {
-            $this->conn->close();
-            $this->loop->cancelTimer($timer);
-            $reject(new RuntimeException(sprintf("DNS query for %s cancelled", $name)));
-        });
+            while (($received = $socket->receive($cancellation)) !== null) {
+                [, $data] = $received;
 
-        $this->conn->on('message', function ($data) use ($timer) {
-            $response = $this->parser->parseMessage($data);
-
-            $this->conn->close();
-            $this->loop->cancelTimer($timer);
-
-            if (!$response) {
-                $this->deferred->reject(new BadServerException('Invalid response received'));
-                return;
+                $address = $this->addressFromResponse($data, $name);
+                if ($address !== null) {
+                    return $address;
+                }
             }
 
-            if ($response->tc) {
-                $this->deferred->reject(new BadServerException('The server set the truncated bit although we issued a TCP request'));
-                return;
+            throw new RuntimeException(sprintf('The mDNS socket closed while resolving %s', $name));
+        } catch (CancelledException) {
+            throw new RuntimeException(sprintf('DNS query for %s timed out', $name));
+        } finally {
+            $socket->close();
+        }
+    }
+
+    /**
+     * Build the query datagram for a name.
+     */
+    private function encodeQuery(string $name): string
+    {
+        $question = $this->questionFactory->create(ResourceQTypes::A);
+        $question->setName($name);
+
+        $request = $this->messageFactory->create(MessageTypes::QUERY);
+        $request->getQuestionRecords()->add($question);
+        // RFC 6762 section 18.1: a multicast query carries no transaction id, because responses
+        // are matched on the question rather than on the id.
+        $request->setID(0);
+
+        return $this->encoder->encode($request);
+    }
+
+    /**
+     * Pull the address for a name out of a response, or null if it is not about that name.
+     */
+    private function addressFromResponse(string $data, string $name): ?string
+    {
+        try {
+            $response = $this->decoder->decode($data);
+        } catch (Throwable) {
+            // Another responder's unrelated or malformed traffic: keep waiting.
+            return null;
+        }
+
+        foreach ($response->getAnswerRecords() as $record) {
+            // Names come back fully qualified, i.e. with the root label's trailing dot.
+            if (strcasecmp(rtrim((string) $record->getName(), '.'), rtrim($name, '.')) !== 0) {
+                continue;
             }
 
-            $this->deferred->resolve($response);
-        });
+            foreach ($record->getData() as $field) {
+                return (string) $field;
+            }
+        }
 
-        $this->conn->send($queryData, $this->nameserver);
-
-        return $this->deferred->promise();
-    }
-
-    /**
-     * Returns the current deferred object, useful for testing or inspection.
-     *
-     * @return Deferred The active deferred used for the current DNS query.
-     */
-    public function getDeferred(): Deferred
-    {
-        return $this->deferred;
-    }
-
-    /**
-     * Returns the active socket connection used for the multicast query.
-     *
-     * @return Socket The UDP socket used for sending/receiving messages.
-     */
-    public function getConn(): Socket
-    {
-        return $this->conn;
+        return null;
     }
 }
