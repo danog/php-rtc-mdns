@@ -11,7 +11,7 @@ This library provides a Multicast DNS (mDNS) resolver for local network service 
 
 This is the `danog/php-rtc-mdns` fork used by MadelineProto. It targets PHP 8.2+ and has been ported from ReactPHP promises and sockets to Amp v3 fibers and sockets.
 
-The forked stack keeps the upstream `quasarstream/*` dependency constraints for compatibility. Each `danog/php-rtc-*` package replaces its upstream counterpart, so consumers select the complete maintained stack by requiring the corresponding danog packages together.
+All internal Composer dependencies use their `danog/php-rtc-*` package names directly, so installing a component selects the maintained danog packages throughout the dependency graph.
 
 ## Requirements
 

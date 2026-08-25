@@ -42,8 +42,5 @@
             "Tests\\Webrtc\\MDNS\\": "tests"
         }
     },
-    "minimum-stability": "dev",
-    "replace": {
-        "quasarstream/mdns": "self.version"
-    }
+    "minimum-stability": "dev"
 }
