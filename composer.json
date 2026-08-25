@@ -1,7 +1,7 @@
 {
     "name": "danog/php-rtc-mdns",
     "type": "library",
-    "description": "This library provides a Multicast DNS (mDNS) resolver. Fork with FFI made optional and a pure-PHP DTLS/SRTP stack, maintained for MadelineProto.",
+    "description": "An Amp v3 Multicast DNS resolver for WebRTC. MadelineProto's PHP 8.2+ fork is a Composer-compatible component of the modular danog/php-rtc stack.",
     "keywords": [
         "multicastdns",
         "mdns"

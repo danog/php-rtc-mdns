@@ -1,15 +1,21 @@
 # MDNS
 
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-blue.svg)](https://php.net/)
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-blue.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
 
 **This library is originally forked from https://github.com/clue/reactphp-mdns**
 
-This library provides a Multicast DNS (mDNS) resolver for use with [ReactPHP](https://reactphp.org/), enabling local network service discovery for WebRTC and other real-time peer-to-peer applications.
+This library provides a Multicast DNS (mDNS) resolver for local network service discovery in WebRTC and other real-time peer-to-peer applications.
+
+## About this fork
+
+This is the `danog/php-rtc-mdns` fork used by MadelineProto. It targets PHP 8.2+ and has been ported from ReactPHP promises and sockets to Amp v3 fibers and sockets.
+
+The forked stack keeps the upstream `quasarstream/*` dependency constraints for compatibility. Each `danog/php-rtc-*` package replaces its upstream counterpart, so consumers select the complete maintained stack by requiring the corresponding danog packages together.
 
 ## Requirements
 
-- PHP ≥ 8.4
+- PHP ≥ 8.2
 
 ## Documentation
 
@@ -35,4 +41,3 @@ Found a bug? Please report it on our [issues](https://github.com/php-webrtc/mdns
 ## License
 
 BSD 3-Clause License. See [LICENSE](LICENSE) for details.
-
