@@ -41,15 +41,17 @@ class MulticastExecutor
     private readonly Decoder $decoder;
     private readonly MessageFactory $messageFactory;
     private readonly QuestionFactory $questionFactory;
+    private readonly InternetAddress $nameserver;
 
     /**
      * @param string $nameserver Multicast DNS group and port (default: 224.0.0.251:5353).
      * @param float $timeout How long to wait for an answer, in seconds.
      */
     public function __construct(
-        private readonly string $nameserver = Factory::DNS,
+        string $nameserver = Factory::DNS,
         private readonly float $timeout = 5.0
     ) {
+        $this->nameserver = InternetAddress::fromString($nameserver);
         $this->encoder = (new EncoderFactory())->create();
         $this->decoder = (new DecoderFactory())->create();
         $this->messageFactory = new MessageFactory();
@@ -68,7 +70,7 @@ class MulticastExecutor
         $socket = bindUdpSocket('0.0.0.0:0');
 
         try {
-            $socket->send(InternetAddress::fromString($this->nameserver), $this->encodeQuery($name));
+            $socket->send($this->nameserver, $this->encodeQuery($name));
 
             // Responders other than the one being asked for also answer on this group, so keep
             // reading until an answer actually carries the name in question rather than taking
