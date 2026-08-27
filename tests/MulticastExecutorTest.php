@@ -3,7 +3,9 @@
 namespace Tests\Webrtc\MDNS;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
+use Webrtc\AVCodec\Filter\Graph;
 use Webrtc\Exception\RuntimeException;
 use Webrtc\MDNS\Factory;
 use Webrtc\MDNS\MulticastExecutor;
@@ -15,6 +17,7 @@ use Webrtc\MDNS\MulticastExecutor;
  * browsers and systemd-resolved routinely occupy the mDNS port. Only the test that is
  * genuinely about multicast is gated on that.
  */
+#[UsesClass(Graph::class)]
 #[CoversClass(MulticastExecutor::class)]
 class MulticastExecutorTest extends TestCase
 {
