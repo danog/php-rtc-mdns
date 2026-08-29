@@ -17,7 +17,7 @@ namespace Webrtc\MDNS;
  * This class initializes a multicast DNS resolver suitable for use with
  * WebRTC local peer discovery and service resolution scenarios.
  */
-class Factory
+final class Factory
 {
     /**
      * Default mDNS address used for multicast DNS queries (RFC 6762).

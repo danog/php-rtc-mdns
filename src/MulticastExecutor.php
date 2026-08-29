@@ -35,7 +35,7 @@ use function Amp\Socket\bindUdpSocket;
  *
  * @see https://datatracker.ietf.org/doc/html/rfc6762 Multicast DNS
  */
-class MulticastExecutor
+final class MulticastExecutor
 {
     private readonly Encoder $encoder;
     private readonly Decoder $decoder;
@@ -123,12 +123,14 @@ class MulticastExecutor
             return null;
         }
 
+        /** @var \LibDNS\Records\Resource $record */
         foreach ($response->getAnswerRecords() as $record) {
             // Names come back fully qualified, i.e. with the root label's trailing dot.
             if (strcasecmp(rtrim((string) $record->getName(), '.'), rtrim($name, '.')) !== 0) {
                 continue;
             }
 
+            /** @var \LibDNS\Records\Types\Type $field */
             foreach ($record->getData() as $field) {
                 return (string) $field;
             }
