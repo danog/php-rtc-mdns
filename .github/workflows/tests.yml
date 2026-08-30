@@ -48,10 +48,8 @@ jobs:
         run: vendor/bin/psalm --no-progress
 
       - name: Run PHPUnit tests
-        run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            vendor/bin/phpunit
-          else
-            vendor/bin/phpunit -c phpunit-skiptolerant.xml
-          fi
+        # The multicast tests require a host that delivers multicast datagrams
+        # locally. None of the GitHub-hosted runners (Linux included) do, so they
+        # skip everywhere in CI; use the skip-tolerant config on every platform.
+        run: vendor/bin/phpunit -c phpunit-skiptolerant.xml
         shell: bash
